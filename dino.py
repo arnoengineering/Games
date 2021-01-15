@@ -6,13 +6,16 @@ def meters_to_pixels(m):
     return round(pix_per_met * m)
 
 
+# todo add max size so not all large
+screen_size_meters = (30, 15)
+# todo win size in 2:1
 time_mod = 5  # for time
 fps = 30  # def mov as pixx/s, m/s and pix/f
 speed = 10
 
 f_rate = 30
 pix_per_met = 20
-screen_size = tuple(map(meters_to_pixels, (30, 15)))  # (60, 30)  #
+screen_size = tuple(map(meters_to_pixels, screen_size_meters))  # (60, 30)  #
 enemies = ['cactus', 'bird']  # 1,3: low, high def in object or at rand... change prob?
 # 3 cac just add 3 sprights
 
@@ -29,7 +32,10 @@ pygame.mixer.init()
 sprites = pygame.sprite.Group()  # list all sps
 enemy_sp = pygame.sprite.Group()
 
-win = pygame.display.set_mode(screen_size)
+win = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
+# todo add to loop
+scree_size = win.get_size()  # redefine screen_size in loop
+# pix_per_met = scree_size / screen_size_meters
 
 vel_fr = meters_to_pixels(speed) / 30  # m/s
 

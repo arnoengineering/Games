@@ -19,57 +19,38 @@ BLUE = (0, 0, 255)
 
 pygame.init()
 pygame.mixer.init()
+
+all_sp = pygame.sprite.Group()  # mayme make copy of each in here
+wall_sp = pygame.sprite.Group()
+
 caracter_sp = pygame.sprite.Group()  # list all sps
 enemy_sp = pygame.sprite.Group()
-wall_pp = pygame.sprite.Group()
+
+food_sp = pygame.sprite.Group()
+live_sp = pygame.sprite.Group()
 
 game_window = pygame.display.set_mode(screen_size)
 
 lev_map = ''  # image to parse
+
 
 class Wall(pygame.sprite.Sprite):
     def __init__(self):
         super(Wall, self).__init__()
         pass
 
+
 class Food(pygame.sprite.Sprite):
     def __init__(self):
         super(Food, self).__init__()
-
-class Ghost(pygame.sprite.Sprite):
-    def __init__(self, img):
-        super(Ghost, self).__init__()
-        """def __init__(self, mammalName):
-                print(mammalName, 'is a warm-blooded animal.')
-                super().__init__(mammalName)"""
-
-        # shold send class over
-        self.image = pygame.image.load(img).convert()
-        self.rect = self.image.get_rect()
-        self.pos = (1, 2)  # placehold
-        enemy_sp.add(self)  # super/
-
-    def on_screen(self):
-        # define x,y max min then test if both x and y are between
-        # pos += size for test too, only check y fpr dino and x for other, look both for collision
-        if 0 > self.pos[0]:
-            # run continue, or a bunch to start
-            self.rand_pos()
-            # sprites.remove(self)  # correct?, how about gen 5 then just loop pos
-
-    def rand_pos(self):  # distance on ofscrean
-
-        # item = random.choice(enemies)
-        # return pos, item
-
-    # def update(self):  # same for bird
-    #     self.rect.x -= speed
+        food_sp.add(self)
 
 
 class Seeds(Food):
     def __init__(self):
         super(Seeds, self).__init__()
         self.pos = (1, 2)
+        self.score = 10
         # size = (1, 2), change so image takes sise defined
         pass
 
@@ -79,9 +60,27 @@ class Fruit(Food):
         super(Fruit, self).__init__()
         pos = (1, 2)
         size = (1, 2)
+        self.score = 50
         self.rect = pygame.Rect(pos, size)
         self.image = pygame.image.load(bird_img)
 
+        pass
+
+
+class Ghost(pygame.sprite.Sprite):
+    def __init__(self, img):
+        self.score = 250
+        super(Ghost, self).__init__()
+        """def __init__(self, mammalName):
+                print(mammalName, 'is a warm-blooded animal.')
+                super().__init__(mammalName)"""
+
+        # shold send class over
+        self.image = pygame.image.load(img).convert()
+        self.rect = self.image.get_rect()
+        enemy_sp.add(self)  # super/
+
+    def update(self):  # distance on ofscrean
         pass
 
 
@@ -89,26 +88,59 @@ class Player(pygame.sprite.Sprite):
     def __init__(self):
         super(Player, self).__init__()
         self.pos = (4, 5)  # make tupel
-        size = (1, 2)
-
+        self.lives = 3  # neet to disp, with spright
+        self.size = (1, 2)
+        self.eat = False
         pass
 
-    def jump(self):  # maybe add qualifier @... for all
-        global run
-        # change shape and hight, anima
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_ESCAPE]:  # check if true always?
-            run = False
-
-        if keys[pygame.K_UP] or keys[pygame.K_SPACE]:
-            pass
-        #
-        # if keys[pygame.K_DOWN] or [pygame.K_c]:
-        #     # duck
-        #     pass
+    def die(self):
+        self.lives -= 1
+        # play deth music
+        # play death animation
+        if self.lives == 0:
+            # play g_ov ani
+            g_over()
 
     def update(self):
         pass
+
+
+class Level:  # new map, gen
+    def __init__(self):
+        # creat map
+        # add food
+        # tot score += 1000
+        pass
+
+    def reset_lev(self):
+        pac_pos = 1  # place
+        gost_pos = 0  # center, maybe rem all and reinti
+
+
+def reset_game():
+    pac.die()
+    # level rest, mayme in here
+
+
+def collision():
+    global scor
+    wall_collision = pygame.sprite.groupcollide(enemy_sp, wall_sp, False, False)  # all groups
+    # food, indi score
+    food_col = pygame.sprite.spritecollide(pac, food_sp, True)
+    for foo in food_col:  # kill...
+        if foo is Fruit:
+            pac.eat = True  # set timer
+        scor += foo.score
+    # en
+    hits = pygame.sprite.spritecollide(pac, enemy_sp, pac.eat)  # add seperate dino list, and chane coll fun
+    for hit in hits:
+        if pac.eat:
+            scor += hit.score
+        else:
+            reset_game()
+
+    if hits:
+        run = False
 
 
 def score():
@@ -121,43 +153,48 @@ def score():
     score_out = font.render("Score: " + str(score_val), True, (255, 255, 255))
     text_rec = score_out.get_rect()
     text_rec.midtop = (text_x, text_y)
+
+    # lives
+    live_hight = screen_size[1] - 20  # test
+
+    # 20 px from right, 20px fom other
+    for x in range(pac.lives):
+        li = Player()
+        li.pos.right = screen_size[0] - 20 - (li.size[0] + 20) * x  # rect/cir/roght
+        li.pos.bottom = live_hight
+        # only add if diffent
+        live_sp.add(li)
+    # add to sprints, dond move, only have pos
     game_window.blit(score_out, text_rec)
 
 
-class Level:  # new map, gen
-    def __init__(self):
-        pass
+def g_over():
+    pass
 
-pygame.display.set_caption('Snake')
 
-# Clock object
+pygame.display.set_caption('PacMan')
+
+pac = Player()  # new lev,  todo add menu, highscore, restart
 clock = pygame.time.Clock()
+scor = 0
 run = True
-
+# first enemy... set so wait for click
+# create_enemy()
 while run:
     clock.tick(fps)
-    # pygame.time.delay(50)  # delay for refresh
-    # maybe add function
     for event in pygame.event.get():
 
         if event.type == pygame.QUIT:
             ru = False  # breaks loop
 
     # removes old positions
-    sprites.update()
-    eat = False
+    all_sp.update()
     # collision = pygame.sprite.Group()
-    hits = pygame.sprite.spritecollide(dino, sprites, eat)  # add seperate dino list, and chane coll fun
-    # else:
-    #     play.life -= 1
-    # if life = 0 g_over
-    if hits:
-        run = False
-    game_window.fill((0, 0, 0))
-    sprites.draw(game_window)
 
+    game_window.fill((0, 0, 0))
+    all_sp.draw(game_window)
     score()  # calls score function
-    pygame.display.update()
+    pygame.display.flip()
 
 
 g_over()  # pause before quit
