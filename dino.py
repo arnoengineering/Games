@@ -1,9 +1,15 @@
 import pygame
 import random
+import os
 
 
 def meters_to_pixels(m):
     return round(pix_per_met * m)
+
+
+def image_path(img):
+    img_path = r'N:\PC stuff\Programs\images'
+    return os.path.join(img_path, img)
 
 
 # todo add max size so not all large
@@ -19,13 +25,18 @@ screen_size = tuple(map(meters_to_pixels, screen_size_meters))  # (60, 30)  #
 enemies = ['cactus', 'bird']  # 1,3: low, high def in object or at rand... change prob?
 # 3 cac just add 3 sprights
 
-dino_img = ''
-cac_img = ''
-bird_img = ''
+d_path = image_path(r'platformerGraphicsDeluxe_Updated\Player')
+# din not image, path
+d_p_2 = os.path.join(d_path, 'p1_walk', 'PNG')
+dino_imgs = [os.path.join(d_p_2, x) for x in os.listdir(d_p_2) if x.endswith('.png')]
+cac_img = os.path.join(d_path, 'p2_stand.png')
+bird_img = image_path(r'SpaceShooterRedux\PNG\Enemies\enemyRed3.png')
+back_img = image_path(r'planet_3_0.png')
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
+red = pygame.color.Color.r  # correct?
 
 pygame.init()
 pygame.mixer.init()
@@ -77,10 +88,10 @@ def move(time):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, img):  # size for now
         super(Enemy, self).__init__()
-        self.image = pygame.Surface(img)  # fix
+        # self.image = pygame.Surface(img)  # fix
 
-        self.image.fill(BLUE)
-        # self.image = pygame.image.load(img).convert()
+        # self.image.fill(BLUE)
+        self.image = pygame.image.load(img).convert()
         self.rect = self.image.get_rect()
         enemy_sp.add(self)
         sprites.add(self)  # super/
@@ -99,14 +110,15 @@ class Enemy(pygame.sprite.Sprite):
 
 class Cactus(Enemy):
     def __init__(self, pos):
-        super(Cactus, self).__init__((50, 100))
+        super(Cactus, self).__init__(cac_img)
         self.rect.bottom = screen_size[1]
         self.rect.x = pos
 
 
 class Bird(Enemy):
     def __init__(self, pos_x):
-        super(Bird, self).__init__((100, 40))
+        print(bird_img)
+        super(Bird, self).__init__(bird_img)
         # tuple(map(meters_to_pixels, (1, 2)))
         # bird_img
         height_var = meters_to_pixels(random.randint(1, 3))  # hight above ground
@@ -120,15 +132,23 @@ class Bird(Enemy):
 class Dino(pygame.sprite.Sprite):
     def __init__(self):
         super(Dino, self).__init__()
+        # on init stand
+        # on jump jump, on walk loop
+        self.img_index = 0
+        # init all first to save time?
+
+        self.stand = os.path.join(d_path, 'p1_stand.png')
+        self.jump_img = os.path.join(d_path, 'p1_jump.png')
+        self.hurt_img = os.path.join(d_path, 'p1_hurt.png')
         self.pos = (4, 5)  # make tupel
+
         size = (1, 2)
-        self.image = pygame.Surface((50, 100))  # fix
+        self.image = pygame.image.load(self.stand).convert()  # fix, hame seperate init so lives are indi
+        # from standing and other stuff that resets ev death
         self.lives = 2
-        self.image.fill(BLUE)
+
         self.rect = self.image.get_rect()
         # self.rect = pygame.Rect(self.pos, size)  # tuple(map()) or. get rect
-        # self.image = pygame.image.load(dino_img).convert()
-        # self.image.set_colorkey(BLACK)
 
         # set pos
         self.rect.bottomleft = ((screen_size[0] - size[0]) / 2, screen_size[1])  # botom on ground mid x
@@ -136,11 +156,13 @@ class Dino(pygame.sprite.Sprite):
         self.vel = 0
 
         self.v_jump = -10  # m/2 at jump
+
         pass
 
     def death(self):
         ru = True  # ph
         self.lives -= 1
+        pygame.image.load(self.hurt_img).convert()
         # do explosion
         if self.lives == 0:
             ru = False
@@ -154,6 +176,7 @@ class Dino(pygame.sprite.Sprite):
             run = False
 
         if keys[pygame.K_UP] or keys[pygame.K_SPACE]:
+            self.image = pygame.image.load(self.jump_img).convert()
             self.air = True
             self.vel = self.v_jump
 
@@ -162,9 +185,13 @@ class Dino(pygame.sprite.Sprite):
             pass
 
     def update(self):
+
         # def update, then check jump
         # jump only works on ground
         if not self.air:
+            # next image of walk
+            self.image = pygame.image.load(dino_imgs[self.img_index]).convert()
+            self.img_index = (self.img_index + 1) % len(dino_imgs)
             self.jump()
 
         else:  # either change v0 or take t from start .. put in otherloop, so just loop in air?

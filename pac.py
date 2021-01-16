@@ -132,15 +132,13 @@ def collision():
             pac.eat = True  # set timer
         scor += foo.score
     # en
-    hits = pygame.sprite.spritecollide(pac, enemy_sp, pac.eat)  # add seperate dino list, and chane coll fun
-    for hit in hits:
-        if pac.eat:
+    hits = pygame.sprite.spritecollide(pac, enemy_sp, False)  # add seperate dino list, and chane coll fun
+    if pac.eat:
+        for hit in hits:
             scor += hit.score
-        else:
-            reset_game()
-
-    if hits:
-        run = False
+            hit.pos = (0, 0)  # plachold
+    else:
+        reset_game()
 
 
 def score():
