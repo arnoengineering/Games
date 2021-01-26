@@ -1,4 +1,5 @@
 import pygame
+from pygame.locals import *
 import random
 import os
 import sys
@@ -27,7 +28,7 @@ def update_window():
 
     # todo add to loop
     screen_size = win.get_size()  # redefine screen_size in loop
-    pix_per_met = screen_size / screen_size_meters
+    pix_per_met = screen_size[0] / screen_size_meters[0]
     return win
 
 
@@ -46,19 +47,18 @@ path = os.path.join(os.getcwd(), 'img')  # path.dirname(__file__)
 screen_size_meters = (30, 15)
 
 time_mod = 5  # for time
-time_multiple = 0
+time_multiple = 1
 fps = 30  # def mov as pixx/s, m/s and pix/f
 speed = 10
 
 f_rate = 30
-pix_per_met = 20
+pix_per_met = 50
 screen_size = tuple(map(meters_to_pixels, screen_size_meters))  # (60, 30)  #
 enemies = ['trip', 'cactus', 'bird']  # 1,3: low, high def in object or at rand... change prob?
 # 3 cac just add 3 sprights
 
 # din not image, path
 d_path = os.path.join(path, 'p1_walk')
-dino_imgs = [os.path.join(d_path, x) for x in os.listdir(d_path) if x.endswith('.png')]
 
 cac_img = os.path.join(path, 'p2_stand.png')
 bird_img = os.path.join(path, 'enemyRed3.png')
@@ -111,16 +111,13 @@ class Enemy(pygame.sprite.Sprite):
         enemy_sp.add(self)
         sprites.add(self)  # super/
 
-    def on_screen(self):
+    def update(self):
         # define x,y max min then test if both x and y are between
-        # pos += size for test too, only check y fpr dino and x for other, look both for collision
+        # pos += size for test too, only check y fpr dino and x for other, look both for
+        self.rect.x -= vel_fr
         if self.rect.right < 0:
             sprites.remove(self)
             create_enemy()
-
-    def update(self):  # same for bird
-        self.rect.x -= vel_fr * time_multiple
-        self.on_screen()
 
 
 class Cactus(Enemy):
@@ -144,8 +141,6 @@ class Bird(Enemy):
         self.rect.x = pos_x
         self.rect.bottom = screen_size[1] - height_var
 
-        pass
-
 
 class Dino(pygame.sprite.Sprite):
     def __init__(self):
@@ -157,14 +152,12 @@ class Dino(pygame.sprite.Sprite):
         self.lives = 2
 
         self.size = meters_to_pixels((1, 2))
-        self.pos = (screen_size[0] / 2, screen_size[1])
+        self.pos = (int(screen_size[0] / 2), screen_size[1])
+        img_ls = ['stand', 'jump', 'hurt', 'duck']
+        self.image_dir = {x: set_image(os.path.join(path, f'p1_{x}.png'), self.size) for x in img_ls}
 
-        self.stand = set_image(os.path.join(path, 'p1_stand.png'), self.size)
-        self.jump_img = set_image(os.path.join(path, 'p1_jump.png'), self.size)
-        self.hurt_img = set_image(os.path.join(path, 'p1_hurt.png'), self.size)
-        self.duck_img = set_image(os.path.join(path, 'p1_duck.png'), self.size)
-
-        self.image = self.stand  # fix, same separate init so lives are indie
+        self.dino_imgs = [set_image(os.path.join(d_path, x), self.size) for x in os.listdir(d_path) if x.endswith('.png')]
+        self.image = self.image_dir['stand']
         # from standing and other stuff that resets ev death
 
         self.rect = self.image.get_rect()
@@ -176,54 +169,60 @@ class Dino(pygame.sprite.Sprite):
         self.vel = 0
 
         self.v_jump = -10  # m/2 at jump
-
-        pass
+        sprites.add(self)
 
     def update_size(self):
-        self.stand = set_image(os.path.join(path, 'p1_stand.png'), self.size)
-        self.jump_img = set_image(os.path.join(path, 'p1_jump.png'), self.size)
-        self.hurt_img = set_image(os.path.join(path, 'p1_hurt.png'), self.size)
-        self.duck_img = set_image(os.path.join(path, 'p1_duck.png'), self.size)
-
-        self.image = self.stand  # fix, same separate init so lives are indie
+        self.size = meters_to_pixels((1, 2))
+        for x, y in self.image_dir.items():
+            self.image_dir[x] = pygame.transform.scale(y, self.size)  # todo single scale method
+        self.image = self.image_dir['stand']  # fix, same separate init so lives are indie
+        self.dino_imgs = [pygame.transform.scale(x, self.size) for x in self.dino_imgs]
         # from standing and other stuff that resets ev death
 
         self.rect = self.image.get_rect()
 
         # set pos
-        self.rect.bottomleft = ((screen_size[0] - self.size[0]) / 2, screen_size[1])  # bottom on ground mid x
+        self.rect.midbottom = self.pos  # bottom on ground mid x
 
     def jump(self):  # maybe add qualifier @... for all
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_ESCAPE]:  # check if true always?
-            game.pause()
+        print(keys[pygame.K_UP])
+        # if keys[pygame.K_ESCAPE]:  # check if true always?
+        #     menu(sc=level_score)
 
         if keys[pygame.K_UP] or keys[pygame.K_SPACE]:
             # todo play jump sound
-            self.image = self.jump_img
+            self.image = self.image_dir['jump']
             self.air = True
             self.vel = self.v_jump
-
-        if not self.duck and (keys[pygame.K_DOWN] or [pygame.K_c]):
-            self.image = self.duck_img
-            # duck
-            pygame.transform.rotate(self.image, -90)
+        if self.duck and not (keys[pygame.K_DOWN] or keys[pygame.K_c]):
+            self.duck = False
+            self.image = self.image_dir['stand']
             self.rect = self.image.get_rect()
-            self.rect.bottom = screen_size[1]  # todo glob screen size
-            pass
+            self.rect.midbottom = self.pos  # todo repeat behavior
+
+        elif not self.duck and (keys[pygame.K_DOWN] or keys[pygame.K_c]):
+            self.image = pygame.transform.rotate(self.image_dir['duck'], -90)
+            self.rect = self.image.get_rect()
+            self.rect.midbottom = self.pos  #
+            self.duck = True
 
     def update(self):
 
         # def update, then check jump
         # jump only works on ground
+        print(self.pos)
+        print(self.image)
+        print(self.rect.bottomleft)
         if not self.air:
             # next image of walk
-            self.image = pygame.image.load(dino_imgs[self.img_index]).convert()
-            self.img_index = (self.img_index + 1) % len(dino_imgs)
+            self.image = self.dino_imgs[self.img_index]
+            print(self.img_index)
+            self.img_index = (self.img_index + 1) % len(self.dino_imgs)
             self.jump()
 
         else:  # either change v0 or take t from start .. put in otherloop, so just loop in air?
-            dt = time_multiple / fps  # cloc.tick...ms since last t - t0  # t0 time at start, then
+            dt = 1 / fps  # cloc.tick...ms since last t - t0  # t0 time at start, then
             self.rect.bottom += meters_to_pixels(self.vel * dt + 4.9 * dt ** 2)
             self.vel += 9.81 * dt
             # print('{}, {}'.format(self.rect.bottom, self.vel))
@@ -246,6 +245,7 @@ class Game:
         self.state = 'alive'
         self.run = True
 
+        self.restart()
         self.running()
 
     def level(self):  # level score?, run indie from level
@@ -256,7 +256,7 @@ class Game:
         if hits:
             print(hits)
             dino.lives -= 1
-            dino.image = dino.hurt_img
+            dino.image = dino.image_dir['hurt']
             # play sound
             if dino.lives == 0:
                 # play d sound
@@ -271,7 +271,7 @@ class Game:
         button_ls = ['quit']
         if score == 0:  # main men
             button_ls.extend('start')
-            dino.image = dino.stand
+            dino.image = dino.image_dir['stand']
             print('space jump')
 
         elif de:  # thus dead
@@ -302,17 +302,19 @@ class Game:
         #     self.quit()
 
     def running(self):
-        global game_window
+        global game_window, screen_size
         while self.run:
             self.clock.tick(fps)
             for event in pygame.event.get():
+                # print(event)
                 if event.type == pygame.QUIT:
                     self.run = False  # breaks loop
                     self.quit()
 
-                elif event.type == pygame.locals.VIDEORESIZE:
+                elif event.type == VIDEORESIZE:
                     width, height = event.size
                     height = width / 2
+                    screen_size = (int(width), int(height))
 
                     # # max dim
                     # size_fact = max(size)
@@ -324,6 +326,7 @@ class Game:
             elif self.state == 'menu':
                 self.menu()
             # pause
+            game_window.fill(BLACK)
             game_window.blit(pygame.transform.scale(self.back_sp, screen_size), (0, 0))
             lives_sp.draw(game_window)
             sprites.draw(game_window)
@@ -392,11 +395,171 @@ class Game:
 def create_dino(si):
     din = Dino()
     sprites.add(din)
-    for li in range(din.lives):
-        pos_din = (si[0] - (din.size + 10) * (li + 1), si[1])
-        lives_sp.add(Dino())
+    # for li in range(din.lives):
+    #     pos_din = (si[0] - (din.size[0] + 10) * (li + 1), si[1])
+    #     di = Dino()
+    #     di.pos = pos_din
+    #     lives_sp.add(di)
     return din
 
 
 dino = create_dino(screen_size)
 game = Game()
+
+
+def restart_level(from_dead=False):
+    global time_multiple, dino, total_score, state, time
+    if from_dead:
+        # clear sp
+        state = 'alive'
+        time = 0
+    create_dino(screen_size)
+    create_enemy()
+    # countdown
+    # player stand
+    pass
+
+
+def level_update():
+    # removes old positions
+    sprites.update()
+    hits = pygame.sprite.spritecollide(dino, enemy_sp, False)  # add seperate dino list, and chane coll fun
+
+    if hits:
+        print(hits)
+        dino.lives -= 1
+        dino.image = dino.image_dir['hurt']
+        # play sound
+        # if dino.lives == 0:
+        # play d sound
+        # g_over()
+
+
+# def menu(sc=0, de=False):
+#     button_ls = ['quit']
+#     if sc == 0:  # main men
+#         button_ls.extend('start')
+#         dino.image = dino.image_dir['stand']
+#         print('space jump')
+#
+#     elif de:  # thus dead
+#         button_ls.append('restart')
+#         button_ls.append('save sc')
+#         print(sc)  # add to list
+#         print('save?')  # menu option
+#     else:  # pause
+#         button_ls.append('resume')
+#         button_ls.append('main Menu')
+#         print('pause')
+#
+#     # create button
+#     len_b = len(button_ls)
+#     screen_pos = (screen_size[1] - 40) / len_b
+#     for b in range(len_b):
+#         but_pos = (10 + screen_pos) * b
+#         rec = pygame.Surface((50, but_pos))
+#         rec.fill(BLUE)
+#         text_surf = pygame.font.Font('freesansbold.ttf', 30).render(button_ls[b], True, WHITE)
+#         game_window.blit(text_surf, rec)
+#
+#     # start = True
+#     # qui = False  # menu
+#     # if start:
+#     #     self.restart()
+#     # elif qui:
+#     #     self.quit()
+#
+#
+# def g_over():
+#     """get sc end loop, get time return ask is replay"""
+#     sprites.empty()
+#     enemy_sp.empty()
+#     lives_sp.empty()
+#     menu(sc=total_score, de=True)
+#     pass
+#
+#
+# def score():
+#     font = pygame.font.Font('freesansbold.ttf', 30)
+#     # time = 0  # placehold
+#     score_val = total_score * time_multiple / 10  # * 100  # 100 points/s..self.time from lev
+#     # location
+#     text_x = 100  # screen_size - pix_per_caract(fsize)*len
+#     text_y = 10
+#     score_out = font.render("Score: " + str(score_val), True, WHITE)
+#     text_rec = score_out.get_rect()
+#     text_rec.midtop = (text_x, text_y)
+#     game_window.blit(score_out, text_rec)
+#
+#
+# def save_score(self):
+#     # ask text
+#     na = input('name: ')
+#     with open(na + '_score.txt', 'w') as fi:
+#         fi.write(str(self.total_score))
+#     pass
+
+
+def create_dino(si):
+    global dino
+    dino = Dino()
+    # for li in range(din.lives):
+    #     pos_din = (si[0] - (din.size[0] + 10) * (li + 1), si[1])
+    #     di = Dino()
+    #     di.pos = pos_din
+    #     lives_sp.add(di)
+
+
+def game_quit():
+    pygame.quit()
+    sys.exit()
+
+
+# dino = Dino()
+# create_enemy()
+# # create_dino(screen_size)
+# total_score = 0
+# level_num = 0
+#
+# # Clock object
+# clock = pygame.time.Clock()
+# back_sp = pygame.image.load(back_img).convert()
+# time = 0
+# state = 'alive'
+# run = True
+#
+# # Clock object
+#
+# while run:
+#     clock.tick(fps)
+#     print(sprites)
+#     game_window.blit(pygame.transform.scale(back_sp, screen_size), (0, 0))
+#     for event in pygame.event.get():
+#         if event.type == pygame.QUIT:
+#             run = False  # breaks loop
+#             game_quit()
+#
+#         elif event.type == VIDEORESIZE:
+#             width = event.size
+#             width[1] = int(width[0] / 2)
+#             screen_size = width
+#
+#             # # max dim
+#             # size_fact = max(size)
+#             # size_ind = size.index(size_fact)  # so we can
+#             game_window = update_window()
+#     if state == 'alive':
+#         print('all')
+#         # todo level end map
+#         level_update()
+#         time += clock.get_time()
+#     # elif state == 'menu':
+#     #     menu()
+#     # score()  # calls sc function
+#     # # pause
+#     # game_window.fill(BLACK)
+#
+#     # lives_sp.draw(game_window)
+#     sprites.draw(game_window)
+#     # play background
+#     pygame.display.flip()

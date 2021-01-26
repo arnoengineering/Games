@@ -219,7 +219,7 @@ def redraw(surface):
     s.draw(surface)
     snack_ob.draw(surface)
 
-    score(surface, len(s.body) - 1)  # calls score function
+    score(surface, len(s.body) - 1)  # calls sc function
 
     draw_grid(width, rows, surface)  # calls function to draw grid
     pygame.display.update()

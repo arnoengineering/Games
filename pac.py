@@ -109,7 +109,7 @@ class Level:  # new map, gen
     def __init__(self):
         # creat map
         # add food
-        # tot score += 1000
+        # tot sc += 1000
         pass
 
     def reset_lev(self):
@@ -125,7 +125,7 @@ def reset_game():
 def collision():
     global scor
     wall_collision = pygame.sprite.groupcollide(enemy_sp, wall_sp, False, False)  # all groups
-    # food, indi score
+    # food, indi sc
     food_col = pygame.sprite.spritecollide(pac, food_sp, True)
     for foo in food_col:  # kill...
         if foo is Fruit:
@@ -191,7 +191,7 @@ while run:
 
     game_window.fill((0, 0, 0))
     all_sp.draw(game_window)
-    score()  # calls score function
+    score()  # calls sc function
     pygame.display.flip()
 
 

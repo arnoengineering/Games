@@ -70,7 +70,7 @@ class Ball(object):
         self.x += self.vx
         self.y += self.vy
 
-    # defines ball behavior after a score, before release
+    # defines ball behavior after a sc, before release
     def startup(self, pos_x, pos_y, rel, release=False):
         # position of ball on startup: called with paddle positions. Sticks to paddle
         self.x = pos_x
@@ -225,7 +225,7 @@ class Paddle(object):
         pygame.draw.rect(surface, self.color, (self.x, self.y, self.b_size, self.pad_size))
 
 
-# object so score holds value
+# object so sc holds value
 class ScoreBoard(object):
     def __init__(self):
         # initial scores
@@ -236,7 +236,7 @@ class ScoreBoard(object):
 
     def score_add(self, pad):
 
-        # adds score
+        # adds sc
         if pad == 'p1':
             self.p1_score += 1
 
@@ -247,7 +247,7 @@ class ScoreBoard(object):
             message(pad)
 
     def score_output(self, surface):
-        # outputs score
+        # outputs sc
         global size
 
         font = pygame.font.SysFont('arial', 24)
@@ -329,7 +329,7 @@ def redraw(surface):
     pygame.draw.rect(win, (255, 255, 255), (0, (size - border_h), size, border_h))
     pygame.draw.line(surface, (255, 255, 255), ((size // 2), 0), ((size // 2), size))
 
-    # calls score without player
+    # calls sc without player
     sb.score_output(win)
     pygame.display.update()
 
@@ -392,7 +392,7 @@ def main():
     # increases velocity as game goes on
     speed_in = 0
 
-    # calls score
+    # calls sc
     sb.score_output(win)
 
     # coin toss
