@@ -21,3 +21,31 @@ do scrable live
 
 
 
+--------------------------------------
+::::bomb::::
+
+ai
+give borders and pos, open
+either creat alg or nn
+
+event
+get mous pos on click
+        find x_y pos devide by size to find index
+        click bom in pos.....
+
+baybe save so ghrid isnt np array with ones, zers but bombs
+
+maybe set already then asign active after
+
+# def mine_local():
+#     # minise where np random = 1
+#     mine_cnt = int(0.2 * map_grid.size[0]*map_grid.size[1])
+#     # for m in range(mine_cnt):
+#     #     mine_sp.add(mi)
+
+# squared since 2,2
+# maybe count not prob
+# no more than 4'
+# gen boms on first click if no bombs, open area
+# prob = 0.2
+# map_grid = np.random.choice(1, tiles ** 2, p=[1-prob, prob]).reshape((tiles, tiles))

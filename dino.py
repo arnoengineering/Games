@@ -63,7 +63,7 @@ d_path = os.path.join(path, 'p1_walk')
 cac_img = os.path.join(path, 'p2_stand.png')
 bird_img = os.path.join(path, 'enemyRed3.png')
 back_img = os.path.join(path, 'planet_3_0.png')
-game_window = update_window()
+
 
 # rects
 BLACK = (0, 0, 0)
@@ -175,15 +175,6 @@ class Dino(pygame.sprite.Sprite):
         # set pos
         self.rect.midbottom = self.pos  # bottom on ground mid x
 
-    def live_sp(self):
-        live_size = meters_to_pixels((0.5, 0.5))
-        live_img = set_image(os.path.join(path, 'Heart.png'), live_size)
-
-        for li in range(self.lives):
-            live_rect = live_img.get_rect()
-            live_rect.midbottom = (screen_size[0] - 10 - li * live_size[0], screen_size[1])
-            game_window.blit(live_img, live_rect)
-
     def jump(self):  # maybe add qualifier @... for all
         keys = pygame.key.get_pressed()
         # if keys[pygame.K_ESCAPE]:  # check if true always?
@@ -228,17 +219,21 @@ class Dino(pygame.sprite.Sprite):
 
 class Game:
     def __init__(self):
-        global time_multiple, dino
+        global time_multiple
+
         self.total_score = 0
         self.level_score = 0
         self.level_num = 0
 
         # Clock object
+        self.game_window = update_window()
+
         self.clock = pygame.time.Clock()
         self.back_sp = pygame.image.load(back_img).convert()
         self.time = 0
-        self.state = 'alive'
+        self.state = 'menu'
         self.run = True
+        self.dino = Dino()
 
         self.restart()
         self.running()
@@ -246,13 +241,13 @@ class Game:
     def level(self):  # level score?, run indie from level
         # removes old positions
         sprites.update()
-        hits = pygame.sprite.spritecollide(dino, enemy_sp, True)  # add seperate dino list, and chane coll fun
+        hits = pygame.sprite.spritecollide(self.dino, enemy_sp, True)  # add seperate dino list, and chane coll fun
 
         if hits:
-            dino.lives -= 1
-            dino.image = dino.image_dir['hurt']
+            self.dino.lives -= 1
+            self.dino.image = self.dino.image_dir['hurt']
             # play sound
-            if dino.lives == 0:
+            if self.dino.lives == 0:
                 # play d sound
                 self.run = False
                 self.g_over()
@@ -265,7 +260,7 @@ class Game:
         button_ls = ['quit']
         if score == 0:  # main men
             button_ls.extend('start')
-            dino.image = dino.image_dir['stand']
+            self.dino.image = self.dino.image_dir['stand']
             print('space jump')
 
         elif de:  # thus dead
@@ -284,9 +279,10 @@ class Game:
         for b in range(len_b):
             but_pos = (10 + screen_pos) * b
             rec = pygame.Surface((50, but_pos))
+            rect = rec.get_rect()
             rec.fill(BLUE)
             text_surf = pygame.font.Font('freesansbold.ttf', 30).render(button_ls[b], True, WHITE)
-            game_window.blit(text_surf, rec)
+            self.game_window.blit(text_surf, rect)
 
         # start = True
         # qui = False  # menu
@@ -295,36 +291,52 @@ class Game:
         # elif qui:
         #     self.quit()
 
+    def live_sp(self):
+        live_size = meters_to_pixels((0.5, 0.5))
+        live_img = set_image(os.path.join(path, 'Heart.png'), live_size)
+
+        for li in range(self.dino.lives):
+            live_rect = live_img.get_rect()
+            live_rect.midbottom = (screen_size[0] - 10 - li * live_size[0], screen_size[1])
+            self.game_window.blit(live_img, live_rect)
+
+    def events(self):
+        global screen_size
+        for event in pygame.event.get():
+            print(event, event.type)
+            if event.type == pygame.QUIT:
+                self.run = False  # breaks loop
+                game_quit()
+
+            elif event.type == VIDEORESIZE:
+                width, height = event.size
+                height = width / 2
+                screen_size = (int(width), int(height))
+
+                # # max dim
+                # size_fact = max(size)
+                # size_ind = size.index(size_fact)  # so we can
+                self.game_window = update_window()
+            # elif event.type == MOUSEBUTTONDOWN:  # only looks when pressed
+            #     mouse_pos = pygame.mouse.get_pos()
+
     def running(self):
-        global game_window, screen_size
+        global screen_size
         while self.run:
+            self.game_window.fill(BLACK)
             self.clock.tick(fps)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.run = False  # breaks loop
-                    game_quit()
-
-                elif event.type == VIDEORESIZE:
-                    width, height = event.size
-                    height = width / 2
-                    screen_size = (int(width), int(height))
-
-                    # # max dim
-                    # size_fact = max(size)
-                    # size_ind = size.index(size_fact)  # so we can
-                    game_window = update_window()
+            self.events()
             if self.state == 'alive':
                 # todo level end map
                 self.level()
             elif self.state == 'menu':
                 self.menu()
             # pause
-            game_window.fill(BLACK)
-            game_window.blit(pygame.transform.scale(self.back_sp, screen_size), (0, 0))
 
-            dino.live_sp()
-            sprites.draw(game_window)
+            self.game_window.blit(pygame.transform.scale(self.back_sp, screen_size), (0, 0))
+
+            self.live_sp()
+            sprites.draw(self.game_window)
 
             self.time += self.clock.get_time()
             # play background
@@ -332,17 +344,17 @@ class Game:
             pygame.display.flip()
 
     def restart(self, from_dead=False):
-        global dino
         if from_dead:
             # clear sp
             self.total_score = 0
             self.level_score = 0
+            self.dino = Dino()
 
             # Clock object
             self.clock = pygame.time.Clock()
             self.time = 0
         self.level_score = 0
-        dino = Dino()
+
         create_enemy()
         # countdown
         # player stand
@@ -373,7 +385,7 @@ class Game:
         score_out = font.render("Score: " + str(score_val), True, WHITE)
         text_rec = score_out.get_rect()
         text_rec.midtop = (text_x, text_y)
-        game_window.blit(score_out, text_rec)
+        self.game_window.blit(score_out, text_rec)
 
     def save_score(self):
         # ask text
@@ -387,5 +399,4 @@ def game_quit():
     sys.exit()
 
 
-dino = Dino()
 game = Game()
