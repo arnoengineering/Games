@@ -10,7 +10,7 @@ class Block:
 
 
 # either mat revesed or mat, index
-# alow input from norm, slash self alg
+# alow input from norm, slash game alg
 def shift_blocks(start):
     # if row, all col, if col all rows
     start_r = start

@@ -66,7 +66,7 @@ g = 9.81
 
 class Mass:
     def __init__(self, m):
-        # self.mass = m
+        # game.mass = m
         self.size = 2  # rad
         pass
 
@@ -88,7 +88,7 @@ class Pendulum:
         self.rod = 1
         self.pos = (1, 2)
 
-        # self.pos_top = (5,0)
+        # game.pos_top = (5,0)
         # positions
         self.theta0 = 0
         self.theta = np.arctan(self.pos[1] / self.pos[0])

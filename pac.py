@@ -1,5 +1,7 @@
 import pygame
 import random
+import numpy as np
+from Pathfider import path_finder
 time_mod = 5  # for time
 fps = 30  # def mov as pixx/s, m/s and pix/f
 speed = 2  # m/s
@@ -31,7 +33,9 @@ live_sp = pygame.sprite.Group()
 
 game_window = pygame.display.set_mode(screen_size)
 
-lev_map = ''  # image to parse
+speed_multiple = 10
+lev_map = np.array([])  # image to parse
+speed_matrix = np.array([])
 
 
 class Wall(pygame.sprite.Sprite):
@@ -70,17 +74,62 @@ class Fruit(Food):
 class Ghost(pygame.sprite.Sprite):
     def __init__(self, img):
         self.score = 250
+        self.velocity = 1
+        self.pos = (1, 1)  # grid local
+        self.cond = 'chase'
+        # change so movementr is fluid, but grid not
         super(Ghost, self).__init__()
-        """def __init__(self, mammalName):
-                print(mammalName, 'is a warm-blooded animal.')
-                super().__init__(mammalName)"""
 
         # shold send class over
         self.image = pygame.image.load(img).convert()
         self.rect = self.image.get_rect()
         enemy_sp.add(self)  # super/
+        self.target = (1,1)  # pacme...add for diff gosts
 
     def update(self):  # distance on ofscrean
+        pac_pos, pac_vel = 0, 0
+        node = False  # place
+        old_pos = self.pos
+
+        self.pos += self.velocity * speed_multiple
+        if self.cond == 'chase':
+            self.chase(pac_pos, pac_vel)
+        if node:  # turn
+            lev_map[old_pos] = '1'  # wall, rem
+            path_finder(lev_map, self.pos, self.target)
+
+    def chase(self, pos, vel):
+        
+        pass
+
+    def scatter(self):
+        pass
+
+    def edible(self):
+        pass
+
+
+class Inky(Ghost):
+    def __init__(self):
+        super(Inky, self).__init__()
+        pass
+
+
+class Binky(Ghost):
+    def __init__(self):
+        super(Binky, self).__init__()
+        pass
+
+
+class Pinky(Ghost):
+    def __init__(self):
+        super(Pinky, self).__init__()
+        pass
+
+
+class Clide(Ghost):
+    def __init__(self):
+        super(Clide, self).__init__()
         pass
 
 

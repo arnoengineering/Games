@@ -38,6 +38,10 @@ def set_image(img, img_size):
     return pygame.transform.scale(img_sp, img_size)
 
 
+def set_text(size):
+    pass
+
+
 pygame.init()
 pygame.mixer.init()
 pygame.display.set_caption('Dino')
@@ -73,7 +77,7 @@ red = pygame.color.Color.r  # correct?
 
 sprites = pygame.sprite.Group()  # list all sps
 enemy_sp = pygame.sprite.Group()
-# lives_sp = pygame.sprite.Group()
+but_sp = pygame.sprite.Group()
 
 vel_fr = meters_to_pixels(speed) / 30  # m/s
 
@@ -95,16 +99,16 @@ def create_enemy():
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, img, size):  # size for now
         super(Enemy, self).__init__()
-        # self.image = pygame.Surface(img)  # fix
+        # game.image = pygame.Surface(img)  # fix
 
-        # self.image.fill(BLUE)
+        # game.image.fill(BLUE)
         self.image = set_image(img, size)
         self.rect = self.image.get_rect()
         enemy_sp.add(self)
         sprites.add(self)  # super/
 
     def update(self):
-        # define x,y max min then test if both x and y are between
+        # define x,y max mine_h then test if both x and y are between
         # pos += size for test too, only check y fpr dino and x for other, look both for
         self.rect.x -= vel_fr
         if self.rect.right < 0:
@@ -211,10 +215,28 @@ class Dino(pygame.sprite.Sprite):
             dt = 1 / fps  # cloc.tick...ms since last t - t0  # t0 time at start, then
             self.rect.bottom += meters_to_pixels(self.vel * dt + 4.9 * dt ** 2)
             self.vel += 9.81 * dt
-            # print('{}, {}'.format(self.rect.bottom, self.vel))
+            # print('{}, {}'.format(game.rect.bottom, game.vel))
             if self.rect.bottom >= screen_size[1]:  # y/x?
                 self.air = False
                 self.rect.bottom = screen_size[1]
+
+
+class Button(pygame.sprite.Sprite):
+    def __init__(self, name, pos):
+        super(Button, self).__init__()
+        self.name = name
+        self.image = pygame.Surface(tuple(meters_to_pixels((5, 2))))  # button surf
+        self.image.fill(BLUE)
+        self.rect = self.image.get_rect()
+        self.rect.center = (screen_size[0] / 2, pos)
+
+        # button Text
+        text_surf = pygame.font.Font('freesansbold.ttf', 30).render(self.name, True, WHITE)
+        text_rect = text_surf.get_rect()
+        text_rect.center = self.rect.center
+        self.image.blit(text_surf, text_rect)
+
+        but_sp.add(self)
 
 
 class Game:
@@ -230,17 +252,19 @@ class Game:
 
         self.clock = pygame.time.Clock()
         self.back_sp = pygame.image.load(back_img).convert()
+
         self.time = 0
         self.state = 'menu'
         self.run = True
         self.dino = Dino()
 
-        self.restart()
+        # game.restart()
         self.running()
 
     def level(self):  # level score?, run indie from level
         # removes old positions
         sprites.update()
+        self.time += self.clock.get_time()
         hits = pygame.sprite.spritecollide(self.dino, enemy_sp, True)  # add seperate dino list, and chane coll fun
 
         if hits:
@@ -249,19 +273,22 @@ class Game:
             # play sound
             if self.dino.lives == 0:
                 # play d sound
-                self.run = False
-                self.g_over()
+                self.state = 'in menu'
+                self.menu(self.level_score, True)
+                # game.run = False
+                # game.g_over()
             else:
                 self.restart()
 
         pass
 
-    def menu(self, score=0, de=False):
+    def menu(self, score=0, de=False):  # create sprites
+        # remove old, maybe ad men init, men loop
+
         button_ls = ['quit']
         if score == 0:  # main men
-            button_ls.extend('start')
+            button_ls.append('start')
             self.dino.image = self.dino.image_dir['stand']
-            print('space jump')
 
         elif de:  # thus dead
             button_ls.append('restart')
@@ -276,20 +303,11 @@ class Game:
         # create button
         len_b = len(button_ls)
         screen_pos = (screen_size[1] - 40) / len_b
+        print(button_ls)
         for b in range(len_b):
-            but_pos = (10 + screen_pos) * b
-            rec = pygame.Surface((50, but_pos))
-            rect = rec.get_rect()
-            rec.fill(BLUE)
-            text_surf = pygame.font.Font('freesansbold.ttf', 30).render(button_ls[b], True, WHITE)
-            self.game_window.blit(text_surf, rect)
 
-        # start = True
-        # qui = False  # menu
-        # if start:
-        #     self.restart()
-        # elif qui:
-        #     self.quit()
+            but_pos = (30 + screen_pos) * b
+            Button(button_ls[b], but_pos)  # adds button
 
     def live_sp(self):
         live_size = meters_to_pixels((0.5, 0.5))
@@ -317,13 +335,28 @@ class Game:
                 # size_fact = max(size)
                 # size_ind = size.index(size_fact)  # so we can
                 self.game_window = update_window()
-            # elif event.type == MOUSEBUTTONDOWN:  # only looks when pressed
-            #     mouse_pos = pygame.mouse.get_pos()
+            elif event.type == MOUSEBUTTONDOWN:  # only looks when pressed
+                mouse_pos = pygame.mouse.get_pos()
+                mouse_sp = pygame.sprite.Sprite()
+
+                mouse_sp.rect = pygame.Rect(mouse_pos[0], mouse_pos[1], 1, 1)  # mouse sprite 1,1 rext
+
+                col_ls = pygame.sprite.spritecollide(mouse_sp, but_sp, False)  # check if mouse hit
+                if col_ls:
+                    but_sp.empty()  # removes all
+                print(col_ls)
+                for but in col_ls:  # test collision
+                    if but.name == 'quit':
+                        game_quit()
+                    elif but.name == 'start' or but.name == 'restart':
+                        print('re')
+                        self.restart()
 
     def running(self):
         global screen_size
         while self.run:
             self.game_window.fill(BLACK)
+            self.game_window.blit(pygame.transform.scale(self.back_sp, screen_size), (0, 0))
             self.clock.tick(fps)
             self.events()
             if self.state == 'alive':
@@ -331,14 +364,15 @@ class Game:
                 self.level()
             elif self.state == 'menu':
                 self.menu()
+                self.state = 'in menu'
             # pause
 
-            self.game_window.blit(pygame.transform.scale(self.back_sp, screen_size), (0, 0))
-
             self.live_sp()
+            for b in but_sp:
+                self.game_window.blit(b.image, b.rect)
             sprites.draw(self.game_window)
 
-            self.time += self.clock.get_time()
+            self.level_score = self.time
             # play background
             self.score()  # calls score function
             pygame.display.flip()
@@ -354,6 +388,7 @@ class Game:
             self.clock = pygame.time.Clock()
             self.time = 0
         self.level_score = 0
+        self.state = 'alive'
 
         create_enemy()
         # countdown
@@ -378,7 +413,7 @@ class Game:
     def score(self):
         font = pygame.font.Font('freesansbold.ttf', 30)
         # time = 0  # placehold
-        score_val = self.level_score / 10  # * 100  # 100 points/s..self.time from lev
+        score_val = self.level_score / 10  # * 100  # 100 points/s..game.time from lev
         # location
         text_x = 100  # screen_size - pix_per_caract(fsize)*len
         text_y = 10
