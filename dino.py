@@ -1,5 +1,6 @@
 import pygame
 from pygame.locals import *
+import numpy as np
 import random
 import os
 import sys
@@ -57,7 +58,7 @@ speed = 10
 
 f_rate = 30
 pix_per_met = 50
-screen_size = tuple(map(meters_to_pixels, screen_size_meters))  # (60, 30)  #
+screen_size = np.array(screen_size_meters) * pix_per_met  # (60, 30)  #
 enemies = ['trip', 'cactus', 'bird']  # 1,3: low, high def in object or at rand... change prob?
 # 3 cac just add 3 sprights
 
@@ -144,6 +145,7 @@ class Dino(pygame.sprite.Sprite):
         self.img_index = 0
         self.lives = 2
         self.size = meters_to_pixels((1, 2))
+        self.app_size = (1, 2)  # change when duct
 
         # image
         # on init stand; on jump jump, on walk loop
@@ -167,7 +169,7 @@ class Dino(pygame.sprite.Sprite):
         sprites.add(self)
 
     def update_size(self):
-        self.size = meters_to_pixels((1, 2))
+        self.size = meters_to_pixels(self.app_size)
         for x, y in self.image_dir.items():
             self.image_dir[x] = pygame.transform.scale(y, tuple(self.size))
 
@@ -191,25 +193,36 @@ class Dino(pygame.sprite.Sprite):
             self.vel = self.v_jump
 
         if self.duck and not (keys[pygame.K_DOWN] or keys[pygame.K_c]):
+            print('up')
+            self.app_size = (1, 2)
             self.duck = False
             self.image = self.image_dir['stand']
             self.rect = self.image.get_rect()
             self.rect.midbottom = self.pos
 
         elif not self.duck and (keys[pygame.K_DOWN] or keys[pygame.K_c]):
-            self.image = pygame.transform.rotate(self.image_dir['duck'], -90)
+            self.app_size = (2, 1)  # todo filip
+            self.image = pygame.transform.rotate(self.image_dir['stand'], -90)
+            print('duck')
+
             self.rect = self.image.get_rect()
+
             self.rect.midbottom = self.pos  #
+            # di = self.__dict__
+            # print(di)
+            # print(di['image'], di['rect'])
             self.duck = True
 
     def update(self):
         # def update, then check jump
         # jump only works on ground
+
         if not self.air:
             # next image of walk
-            self.image = self.walk_images[self.img_index]
-            self.img_index = (self.img_index + 1) % len(self.walk_images)
             self.jump()
+            if not self.duck:
+                self.image = self.walk_images[self.img_index]
+                self.img_index = (self.img_index + 1) % len(self.walk_images)
 
         else:  # either change v0 or take t from start .. put in otherloop, so just loop in air?
             dt = 1 / fps  # cloc.tick...ms since last t - t0  # t0 time at start, then
@@ -225,7 +238,7 @@ class Button(pygame.sprite.Sprite):
     def __init__(self, name, pos):
         super(Button, self).__init__()
         self.name = name
-        self.image = pygame.Surface(tuple(meters_to_pixels((5, 2))))  # button surf
+        self.image = pygame.Surface(np.array((5, 2)) * pix_per_met)  # button surf
         self.image.fill(BLUE)
         self.rect = self.image.get_rect()
         self.rect.center = (screen_size[0] / 2, pos)
@@ -233,7 +246,7 @@ class Button(pygame.sprite.Sprite):
         # button Text
         text_surf = pygame.font.Font('freesansbold.ttf', 30).render(self.name, True, WHITE)
         text_rect = text_surf.get_rect()
-        text_rect.center = self.rect.center
+        text_rect.center = np.array(self.rect.size) // 2
         self.image.blit(text_surf, text_rect)
 
         but_sp.add(self)
@@ -321,7 +334,7 @@ class Game:
     def events(self):
         global screen_size
         for event in pygame.event.get():
-            print(event, event.type)
+            # print(event, event.type)
             if event.type == pygame.QUIT:
                 self.run = False  # breaks loop
                 game_quit()
@@ -335,6 +348,7 @@ class Game:
                 # size_fact = max(size)
                 # size_ind = size.index(size_fact)  # so we can
                 self.game_window = update_window()
+                self.dino.update_size()
             elif event.type == MOUSEBUTTONDOWN:  # only looks when pressed
                 mouse_pos = pygame.mouse.get_pos()
                 mouse_sp = pygame.sprite.Sprite()
