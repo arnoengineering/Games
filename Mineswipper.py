@@ -1,15 +1,9 @@
 import pygame
 import numpy as np
+import json
 from pygame.locals import *
 import os
 import sys
-
-
-def get_high():
-    for sc in os.listdir('HighScores'):
-        na = sc.replace('_score.txt', '')
-        with open(sc) as fi:
-            score_dir[na] = fi.read()
 
 
 # rects
@@ -20,8 +14,6 @@ red = pygame.color.Color.r  # correct?
 but_col = (0, 0, 255)
 but_col_clicked = (50, 0, 200)
 gui_col = (20, 0, 230)
-
-score_dir = {}
 
 
 pygame.init()
@@ -43,6 +35,7 @@ fps = 30
 # 3 cac just add 3 sprights
 #
 explosion = pygame.mixer.Sound(os.path.join(path, 'Explosion.wav'))
+explosion.set_volume(0.2)
 
 
 def update_sprites(pos, img, size=None):
@@ -90,6 +83,7 @@ class MineBoard:
         self.clicked = 'False'
 
         self.tile_cnt = self.size[0] * self.size[1]
+        print(self.size, self.tile_cnt)
 
     def create(self):
         mine_ls = []
@@ -139,13 +133,10 @@ class Explosion(pygame.sprite.Sprite):
         expl_sp.add(self)
 
     def update(self):
-        # self.image = pygame.transform.scale(self.image, (game.tile_size, game.tile_size))
-        # self.rect.topleft = np.flip(self.position) * game.tile_size
         self.image, self.rect = update_sprites(self.position, self.image)
 
         self.img_ind = (self.img_ind + 1) % len(self.image_ls)
         self.image = self.image_ls[self.img_ind]
-        # todo rm percent then if ind = len, clear from group
 
 
 class Mine(pygame.sprite.Sprite):
@@ -320,15 +311,14 @@ class Game:
             if not m.clicked and not m.bomb:
                 if time_x not in self.end_d.keys():
                     self.end_d[time_x] = []
-                self.end_d[time_x].append(m)  # todo append
+                self.end_d[time_x].append(m)
 
-    def exploion(self):  # todo update screen
+    def exploion(self):
         if self.dt not in self.end_d.keys():
             print('ex_1')
             self.level_over()
         else:
             for m in self.end_d[self.dt]:
-                print('exp')
                 m.expl()
 
     def menu(self):
@@ -343,16 +333,12 @@ class Game:
             but_pos = but_p_tile * b + 1
             Button(but_pos, self.button_ls[b])
 
-        # todo add coustom then call grid
-
-        #     game.quit()
-
     # noinspection PyUnresolvedReferences
     def events(self):
         for event in pygame.event.get():
             if self.input:
                 ret_st = {but.name: but.input_text(event) for but in click_sp}  # get only one line and update,
-                # todo only do if no vals, todo active list
+
                 print(ret_st)
                 if ret_st.values():
                     if 'save_score' in ret_st.keys() and ret_st['save_score']:  # check if val
@@ -473,7 +459,7 @@ class Game:
         self.mine_board = MineBoard(self.tile_cnt, self.mine_num)
         self.mine_board.mine_map = self.mine_board.create()
 
-        screen_shape = np.array(self.map_grid.shape)
+        screen_shape = np.array(self.mine_board.size)
         screen_shape = np.flip(screen_shape)
         screen_shape[1] += 1  # se
 
@@ -486,6 +472,7 @@ class Game:
         self.time = 0  # wait till start
         self.dt = 0
         self.mine_num = 0
+        expl_sp.empty()
         # clear sp
 
         if clear_bord:
@@ -528,19 +515,22 @@ class Game:
         mine_rect = mine_gui.get_rect()
         mine_rect.midright = (self.screen_size[0], gui_rect.center[1])  # mid y, far right
 
+        # last_score = font.render("Last: " + str(int(self.last_g[-1])), True, WHITE)
+        # best_sc = font.render("Best: " + str(self.last_g.sort(key='time')[-1] ), True, WHITE)
+        # sort time, given clear
         # blit
         self.game_window.blit(gui_surf, gui_rect)
         self.game_window.blit(score_out, text_rec)
         self.game_window.blit(mine_gui, mine_rect)
 
     def previous_scores(self):
-        with open(self.score_f) as f:
-            li = f.readlines()  # todo numpy
-        last_score = li[-1]
-        best_sc = li.sort()[-1]  # sort time, given clear
+        json.load(self.score_f)
+        # with open(self.score_f) as f:
+        #     li = f.readlines()  # todo numpy
 
     def save_score(self, na):
         # ask text
+        # json.dump(self.score_f)
         with open(na + f'_time_{self.mine_num}.txt', 'w') as fi:
             fi.write(str(self.time))
 
@@ -571,7 +561,7 @@ class Game:
         self.game_window = pygame.display.set_mode(self.screen_size, pygame.RESIZABLE)
 
         self.screen_size = self.game_window.get_size()  # redefine screen_size in loop
-        self.tile_size = int(self.screen_size[0] / self.map_grid.shape[0])
+        self.tile_size = int(self.screen_size[0] / self.mine_board.size[1])
 
 
 def game_quit():
