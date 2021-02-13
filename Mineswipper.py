@@ -25,7 +25,7 @@ score_dir = {}
 
 
 pygame.init()
-pygame.mixer.init()
+# pygame.mixer.init()
 
 pygame.display.set_caption('Mine')
 
@@ -44,19 +44,32 @@ mine_sp = pygame.sprite.Group()
 but_sp = pygame.sprite.Group()
 expl_sp = pygame.sprite.Group()
 click_sp = pygame.sprite.Group()
-tile_size = 30
+
 
 fps = 30
 # 3 cac just add 3 sprights
+#
+# explosion = pygame.mixer.Sound(os.path.join(path, 'Explosion.wav'))
 
-explosion = pygame.mixer.Sound(os.path.join(path, 'Explosion.wav'))
+
+def update_sprites(pos, img, size=None):
+    rel_pos = np.flip(pos) * game.tile_size
+    if not size:
+        size = (1, 1)
+    img = pygame.transform.scale(img, np.array(size) * game.tile_size)
+    rect = img.get_rect()
+    if size == (1, 1):
+        rect.topleft = rel_pos
+    else:
+        rect.midtop = rel_pos
+    return img, rect
 
 
 def set_image(img, pat=path):
     img_p = os.path.join(pat, img)
 
     img_sp = pygame.image.load(img_p).convert()
-    return pygame.transform.scale(img_sp, (tile_size, tile_size))
+    return pygame.transform.scale(img_sp, (game.tile_size, game.tile_size))
 
 
 def flood_fill(mine_h):  # search
@@ -65,7 +78,6 @@ def flood_fill(mine_h):  # search
         mine_h.open = True  # ie checked
         bord = game.border(mine_h.position, game.mine_map)
         # print(bord)
-        print(mine_h.borders, mine_h.position)
         if mine_h.borders == 0:
             for mi_row in bord:
                 for mi in mi_row:
@@ -74,9 +86,35 @@ def flood_fill(mine_h):  # search
 
 
 class MineBoard:
-    def __init__(self, size, block_size):
-        self.board = np.array((size, size))
+    def __init__(self, size, mines):
+        if type(size) == tuple:
+            self.size = size
+        else:
+            self.size = (size, size)
+        self.map_grid = np.zeros(self.size)
+        self.mine_num = mines
+        self.clicked = 'False'
+
+        self.tile_cnt = self.size[0] * self.size[1]
+        self.mine_map = self.create()  # None
         pass
+
+    def create(self):
+        mine_ls = []
+        for row in range(self.size[0]):  # loop numpers
+            for col in range(self.size[1]):
+                mine_obj = Mine(self.map_grid[row, col], (row, col))  # position xy, active m,g[x,y]
+                mine_ls.append(mine_obj)
+        return np.array(mine_ls).reshape(self.map_grid.shape)
+
+    def click(self, pos):
+        pos_len = (pos[0] + 1) * (pos[1] + 1) - 1  # GET LEN FROM START
+        self.map_grid = self.map_grid.flatten()[:-1]  # rem 1 so x can be added
+        self.map_grid[:self.mine_num] = np.ones(self.mine_num)  # creates ones, count bomb
+        np.random.shuffle(self.map_grid)
+        self.map_grid = np.insert(self.map_grid, int(pos_len), 0)  # total
+        self.map_grid = self.map_grid.reshape(self.size)
+        self.mine_map = self.create()
 
 
 class Explosion(pygame.sprite.Sprite):
@@ -94,8 +132,9 @@ class Explosion(pygame.sprite.Sprite):
         expl_sp.add(self)
 
     def update(self):
-        self.image = pygame.transform.scale(self.image, (tile_size, tile_size))
-        self.rect.topleft = np.flip(self.position) * tile_size
+        # self.image = pygame.transform.scale(self.image, (game.tile_size, game.tile_size))
+        # self.rect.topleft = np.flip(self.position) * game.tile_size
+        self.image, self.rect = update_sprites(self.position, self.image)
 
         self.img_ind = (self.img_ind + 1) % len(self.image_ls)
         self.image = self.image_ls[self.img_ind]
@@ -114,10 +153,8 @@ class Mine(pygame.sprite.Sprite):
         self.bomb = active
         self.position = position  # place in grid
         self.borders = int(np.sum(game.border(self.position)))
-
         # rects
-        self.rect = self.image.get_rect()
-        self.rect.topleft = np.flip(self.position) * tile_size
+        self.image, self.rect = update_sprites(self.position, self.image)
 
         # test values
         self.clicked = False
@@ -126,21 +163,11 @@ class Mine(pygame.sprite.Sprite):
         mine_sp.add(self)
         # if game.bomb
 
-    def text(self):
-        font = pygame.font.Font('comicsans', 30)
-        # location
-        locat = self.position + tile_size / 2  # vector, but work:::center tect
-        score_out = font.render(str(self.borders), True, WHITE)  # colors[game.borders]  # color of text fix so rgb
-
-        text_rec = score_out.get_rect()
-        text_rec.center = locat
-        game.game_window.blit(score_out, text_rec)
-
     def update(self):
         # size of all images
-        self.image = pygame.transform.scale(self.image, (tile_size, tile_size))
-        self.rect.topleft = np.flip(self.position) * tile_size
-        pass
+        self.image, self.rect = update_sprites(self.position, self.image)
+        # self.image = pygame.transform.scale(self.image, (game.tile_size, game.tile_size))
+        # self.rect.topleft = np.flip(self.position) * game.tile_size
 
     def click(self, button, act=True):
         self.clicked = True
@@ -154,6 +181,7 @@ class Mine(pygame.sprite.Sprite):
                 self.image = set_image('minesweeper_tiles flag.jpg')  # flag, b/left -1
 
         elif self.bomb and not self.flag:  # no click on flag
+            print(self.position)
             self.image = set_image('minesweeper_tiles mine.jpg')
             if act:  # prevents recursive
                 game.boom(self.position)
@@ -163,7 +191,7 @@ class Mine(pygame.sprite.Sprite):
             self.image = set_image(f'minesweeper_tiles {self.borders}.jpg')  # image with correct borders
 
     def expl(self):
-        explosion.play()
+        # explosion.play()
         self.clicked = True
         w, h = self.image.get_size()
         Explosion(self.rect.center)
@@ -185,16 +213,15 @@ class Button(pygame.sprite.Sprite):
         if self.name == 'save_score' or self.name == 'custom':
             self.active = True
         self.clicked = False
-        self.pos = (game.screen_size[0] // 2, int(position * tile_size))
+        self.pos = np.array([position, game.mine_map.shape[1] // 2])
 
-        self.image = pygame.Surface(np.array(self.size) * tile_size)  # 5, 1 button
+        self.image = pygame.Surface(np.array(self.size) * game.tile_size)  # 5, 1 button
 
         self.color = but_col if self.active else gui_col
         self.text = self.name
         self.image.fill(BLUE)
 
-        self.rect = self.image.get_rect()
-        self.rect.midtop = self.pos  # (screen_size[0] / 2,
+        self.image, self.rect = update_sprites(self.pos, self.image, self.size)
 
         text_surf = pygame.font.Font('freesansbold.ttf', 10).render(self.text, True, WHITE)
         text_rect = text_surf.get_rect()
@@ -223,6 +250,8 @@ class Button(pygame.sprite.Sprite):
         return None
 
     def update(self):
+        self.image, self.rect = update_sprites(self.pos, self.image, self.size)
+
         text_surf = pygame.font.Font('freesansbold.ttf', 10).render(self.text, True, WHITE)
         self.image.fill(self.color)
         text_rect = text_surf.get_rect()
@@ -245,31 +274,29 @@ class Game:
 
         self.tile_cnt = 10
         self.map_grid = np.zeros(self.tile_cnt ** 2).reshape((self.tile_cnt, self.tile_cnt))
+        self.mine_board = None
         self.mine_map = None  # None
 
+        # endgame
         self.dt = 0
         self.active_local = (0, 0)
+        self.end_d = {}
+        self.score_f = 'Mine_st.txt'
+        # score
+        self.last_g = {'Time': 0, 'Size': [0, 0, 0], 'Cleared': False}
 
+        self.tile_size = 30
         screen_shape = np.array(self.map_grid.shape)
         screen_shape = np.flip(screen_shape)
         screen_shape[1] += 1  # se
 
-        screen_size = screen_shape * tile_size
+        screen_size = screen_shape * self.tile_size
 
         self.game_window = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
 
         self.screen_size = self.game_window.get_size()  # redefine screen_size in loop
-        self.tile_size = int(screen_size[0] / self.map_grid.shape[0])
+
         self.button_ls = ['quit', 'easy', 'medium', 'hard', 'custom']
-
-    def create_mines(self):
-        mine_ls = []
-        for row in range(self.map_grid.shape[0]):  # loop numpers
-            for col in range(self.map_grid.shape[1]):
-                mine_obj = Mine(self.map_grid[row, col], (row, col))  # position xy, active m,g[x,y]
-                mine_ls.append(mine_obj)
-
-        return np.array(mine_ls).reshape(self.map_grid.shape)
 
     def border(self, pos, grid=None):
         if grid is None:
@@ -289,29 +316,31 @@ class Game:
     def boom(self, pos):
         self.state = 'ex'
         self.active_local = pos
+        self.explos_init()
+
+    def explos_init(self):
+        dist_time = 1
+        loop_ls = list(self.mine_map.flatten())
+
+        for m in loop_ls:  # only loop rad once:
+            rad = np.hypot(*(np.subtract(m.position, self.active_local)))
+
+            time_x = int(rad/dist_time)
+            if not m.clicked:
+                if time_x not in self.end_d.keys():
+                    self.end_d[time_x] = []
+                self.end_d[time_x].append(m)  # todo append
 
     def exploion(self):  # todo update screen
-        rad = self.dt  # dismove 1 ev frame
-
-        x_range = np.arange(-rad, rad, 0.1)  # sice rad - issue
-        for x in x_range:
-
-            y_abs = np.sqrt(rad ** 2 - x ** 2)
-            x = int(x) + self.active_local[0]
-            ya = np.array([-y_abs, y_abs]) + self.active_local[1]
-            for y in ya:
-                y = int(y)
-                print(x, y)
-                if 0 < x < self.mine_map.shape[0] and 0 < y < self.mine_map.shape[1]:
-
-                    curr_mine = self.mine_map[x, y]
-                    curr_mine.image = set_image('minesweeper_tiles mine.jpg')
-                    # if curr_mine.bomb and not curr_mine.clicked:
-                    #     print('exp')
-                    #     curr_mine.expl()
-
-        if all(m.clicked for m in self.mine_map.flatten()):  # all bombs
+        if self.dt not in self.end_d.keys():
+            print('ex_1')
             self.level_over()
+        else:
+            for m in self.end_d[self.dt]:
+                m.image = set_image('minesweeper_tiles mine.jpg')
+                # if curr_mine.bomb and not curr_mine.clicked:
+                #     print('exp')
+                #     curr_mine.expl()
 
     def menu(self):
         self.state = 'menu'
@@ -341,6 +370,8 @@ class Game:
                         self.save_score(ret_st['save_score'])
                     elif 'custom' in ret_st.keys() and ret_st['custom']:
                         self.tile_cnt, self.mine_num = ret_st['custom'].split(',')
+                        self.tile_cnt, self.mine_num = int(self.tile_cnt), int(self.mine_num)
+                        self.restart()
 
             # print(event, event.type)
             if event.type == pygame.QUIT:
@@ -349,7 +380,7 @@ class Game:
 
             elif event.type == VIDEORESIZE:
                 width, height = event.size
-                height = width + 1
+                height = width * self.mine_map.shape[0] / self.mine_map.shape[1]  # shape height over w
                 self.screen_size = (int(width), int(height))
 
                 # # max dim
@@ -382,7 +413,7 @@ class Game:
                                 self.tile_cnt = 10
                                 self.mine_num = 20
 
-                            elif but.name == 'med':
+                            elif but.name == 'medium':
                                 self.tile_cnt = 15
                                 self.mine_num = 50
 
@@ -393,9 +424,13 @@ class Game:
                             self.restart()
 
                 else:
-                    tile_index = np.array(mouse_pos) // tile_size  # gets tile index of button
+                    tile_index = np.array(mouse_pos) // game.tile_size  # gets tile index of button
                     tile_index = np.flip(tile_index)
                     if all(map(lambda x, y: x < y, tile_index, self.mine_map.shape)):  # if in bouds do else ignore
+                        if self.state == 'first':  # on first click
+                            self.state = 'act'
+                            self.mine_board.click(tile_index)
+                            self.mine_map = self.mine_board.mine_map
                         mi = self.mine_map[tile_index[0], tile_index[1]]
                         # for x in mi:
                         mi.click(event.button)  # dous click on bomb in pos
@@ -413,7 +448,7 @@ class Game:
 
             self.clock.tick(fps)
             self.events()
-
+            print(self.state)
             if self.state == 'menust':
                 self.menu()
                 print(but_sp)
@@ -424,7 +459,7 @@ class Game:
                     self.last_loop = now
                     self.exploion()
                     # pause
-            else:
+            elif self.state != 'menu':
                 # self.draw_lines()
                 self.time += self.clock.get_time()
                 # play background
@@ -442,16 +477,21 @@ class Game:
         mine_sp.empty()
 
         self.last_loop = pygame.time.get_ticks()
-        self.state = 'me'
+        self.state = 'first'
 
         # map
-        self.map_grid = np.zeros(self.tile_cnt ** 2)
-        self.map_grid[:self.mine_num] = np.ones(self.mine_num)  # creates ones, count bomb
-        np.random.shuffle(self.map_grid)  #
-        self.map_grid = self.map_grid.reshape(self.tile_cnt, self.tile_cnt)
-        self.mine_map = self.create_mines()  # random positions ofd ones
+        self.mine_board = MineBoard(self.tile_cnt, self.mine_num)
+        self.mine_map = self.mine_board.mine_map
+
+        screen_shape = np.array(self.map_grid.shape)
+        screen_shape = np.flip(screen_shape)
+        screen_shape[1] += 1  # se
+
+        self.screen_size = screen_shape * self.tile_size
+        self.update_window()
 
     def level_over(self, clear_bord=False):  # level score?, run indie from level
+        print('l_ov')
         self.state = 'menust'
         self.time = 0  # wait till start
         self.dt = 0
@@ -464,11 +504,10 @@ class Game:
             print('save_score')
         else:
             print('dead')
-            self.menu()  # todo restart?
 
     def score(self):
         # gui
-        gui_surf = pygame.Surface((self.screen_size[0], tile_size))
+        gui_surf = pygame.Surface((self.screen_size[0], self.tile_size))
         gui_surf.fill(BLUE)
         gui_rect = gui_surf.get_rect()
         gui_rect.bottomleft = (0, self.screen_size[1])  # bottom left in b/left screen
@@ -504,6 +543,12 @@ class Game:
         self.game_window.blit(score_out, text_rec)
         self.game_window.blit(mine_gui, mine_rect)
 
+    def previous_scores(self):
+        with open(self.score_f) as f:
+            li = f.readlines()  # todo numpy
+        last_score = li[-1]
+        best_sc = li.sort()[-1]  # sort time, given clear
+
     def save_score(self, na):
         # ask text
         with open(na + f'_time_{self.mine_num}.txt', 'w') as fi:
@@ -524,9 +569,9 @@ class Game:
                     else:
                         check()
 
-            # print(m)
-            # print()
-            # print()
+            print(m)
+            print()
+            print()
 
         print('bord state')
         loop(np.zeros(self.mine_map.shape, int).astype('str'))
